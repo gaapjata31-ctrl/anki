@@ -1,1 +1,462 @@
-https://github.com/gaapjata31-ctrl/anki/blob/1140ac22d357b9f9078399d65499049d8b8750fd/flash.html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="論文暗記">
+<meta name="theme-color" content="#0f1729">
+<title>論文暗記問題集</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  :root{
+    --navy:#1F3864;--blue:#2E75B6;--lblue:#1a3a6a;
+    --green:#1E7145;--orange:#C55A11;--purple:#7030A0;--red:#C00000;--gray:#595959;
+    --bg:#0f1729;--bg2:#1a2744;--text:#E8EDF5;--muted:#7BA7D4;--subtle:#AAB8CC;
+    --card-bg:rgba(255,255,255,0.05);--border:rgba(255,255,255,0.1);
+  }
+  html,body{height:100%;overflow:hidden;}
+  body{
+    background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 50%,var(--bg) 100%);
+    color:var(--text);font-family:'Hiragino Sans','Yu Gothic','Noto Sans JP',sans-serif;
+    display:flex;flex-direction:column;height:100svh;overflow:hidden;
+  }
+
+  /* HEADER */
+  #header{padding:env(safe-area-inset-top,16px) 20px 10px;padding-top:calc(env(safe-area-inset-top) + 12px);border-bottom:1px solid var(--border);flex-shrink:0;}
+  #header h2{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;}
+  #header h1{font-size:17px;font-weight:800;margin:2px 0 8px;}
+  #prog-bar{height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
+  #prog-fill{height:100%;background:linear-gradient(90deg,var(--blue),#7BC8F6);border-radius:2px;transition:width .4s;}
+  #prog-text{font-size:11px;color:var(--muted);margin-top:4px;}
+
+  /* CATEGORY TABS */
+  #cat-wrap{display:flex;gap:8px;padding:10px 16px;overflow-x:auto;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  #cat-wrap::-webkit-scrollbar{display:none;}
+  .cat-btn{padding:5px 12px;border-radius:20px;border:none;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;background:rgba(255,255,255,.07);color:var(--subtle);transition:all .2s;font-family:inherit;}
+  .cat-btn.active{color:#fff;}
+
+  /* MAIN */
+  #main{flex:1;overflow-y:auto;padding:12px 16px 24px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;}
+  #counter{text-align:center;font-size:12px;color:var(--muted);}
+
+  /* CARD */
+  #card-wrap{perspective:1000px;cursor:pointer;user-select:none;}
+  #card-inner{position:relative;transform-style:preserve-3d;transition:transform .45s cubic-bezier(.4,0,.2,1);min-height:200px;}
+  #card-inner.flipped{transform:rotateY(180deg);}
+  .card-face{
+    border-radius:16px;padding:18px;min-height:200px;
+    display:flex;flex-direction:column;justify-content:space-between;
+    backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  }
+  #card-front{background:var(--card-bg);border:1px solid var(--border);}
+  #card-back{
+    position:absolute;top:0;left:0;right:0;
+    transform:rotateY(180deg);
+    border:1px solid rgba(100,160,220,.3);
+  }
+  .cat-tag{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;margin-bottom:8px;align-self:flex-start;}
+  #q-text{font-size:15px;line-height:1.75;font-weight:600;white-space:pre-line;flex:1;}
+  #a-text{font-size:13px;line-height:1.85;white-space:pre-line;}
+  .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:8px;}
+
+  /* BUTTONS */
+  #btn-row{display:flex;gap:10px;justify-content:center;}
+  #nav-row{display:flex;gap:8px;justify-content:center;}
+  .action-btn{
+    padding:11px 0;border-radius:12px;border:none;font-size:13px;font-weight:700;
+    cursor:pointer;flex:1;max-width:160px;font-family:inherit;transition:all .15s;
+    color:#fff;
+  }
+  .action-btn:active{transform:scale(.96);}
+  .nav-btn{
+    padding:8px 0;border-radius:8px;border:1px solid var(--border);font-size:12px;
+    font-weight:600;cursor:pointer;background:rgba(255,255,255,.05);color:var(--subtle);
+    flex:1;max-width:100px;font-family:inherit;transition:all .15s;
+  }
+  .nav-btn:disabled{opacity:.25;cursor:not-allowed;}
+  .nav-btn:not(:disabled):active{background:rgba(255,255,255,.12);}
+
+  /* STATS GRID */
+  #stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .stat-card{border-radius:12px;padding:12px;text-align:center;}
+  .stat-num{font-size:26px;font-weight:800;display:block;}
+  .stat-label{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  /* END CARD */
+  #end-card{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:32px 20px;text-align:center;display:none;flex-direction:column;gap:12px;}
+  #end-card p{font-size:16px;font-weight:700;}
+  #end-card small{font-size:12px;color:var(--muted);}
+
+  #reset-btn{background:none;border:1px solid var(--border);border-radius:8px;color:#555;font-size:11px;padding:8px;cursor:pointer;font-family:inherit;}
+  #reset-btn:active{opacity:.7;}
+
+  /* TOAST */
+  #toast{
+    position:fixed;bottom:calc(env(safe-area-inset-bottom)+24px);left:50%;transform:translateX(-50%) translateY(20px);
+    background:rgba(30,113,69,.9);color:#fff;padding:8px 20px;border-radius:20px;
+    font-size:13px;font-weight:600;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <h2>特別区 経験者採用試験</h2>
+  <h1>職務経験論文 暗記問題集</h1>
+  <div id="prog-bar"><div id="prog-fill" style="width:0%"></div></div>
+  <p id="prog-text">習得済 0 / 68 (0%)</p>
+</div>
+
+<!-- CATEGORY TABS -->
+<div id="cat-wrap">
+  <button class="cat-btn active" data-cat="all" style="background:#444;color:#fff">すべて</button>
+  <button class="cat-btn" data-cat="unknown" style="">未習得のみ</button>
+  <button class="cat-btn" data-cat="pattern">パターン分類</button>
+  <button class="cat-btn" data-cat="intro">序論接続文</button>
+  <button class="cat-btn" data-cat="episode">本論EP</button>
+  <button class="cat-btn" data-cat="conclusion">結論</button>
+  <button class="cat-btn" data-cat="phrase">頻出フレーズ</button>
+  <button class="cat-btn" data-cat="star">STAR法</button>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <p id="counter"></p>
+
+  <!-- Card -->
+  <div id="card-wrap">
+    <div id="card-inner">
+      <div id="card-front" class="card-face">
+        <div>
+          <span class="cat-tag" id="cat-tag-front"></span>
+          <p id="q-text"></p>
+        </div>
+        <p class="hint">タップして答えを確認 →</p>
+      </div>
+      <div id="card-back" class="card-face">
+        <div>
+          <span class="cat-tag" id="cat-tag-back">答え</span>
+          <p id="a-text"></p>
+        </div>
+        <p class="hint">← タップして問題に戻る</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action buttons (shown after flip) -->
+  <div id="btn-row" style="display:none">
+    <button class="action-btn" id="btn-unknown" style="background:#C55A11">△ もう一度</button>
+    <button class="action-btn" id="btn-known" style="background:#1E7145">○ 習得した</button>
+  </div>
+
+  <!-- Nav buttons -->
+  <div id="nav-row">
+    <button class="nav-btn" id="btn-prev">← 前へ</button>
+    <button class="nav-btn" id="btn-shuffle">シャッフル</button>
+    <button class="nav-btn" id="btn-next">次へ →</button>
+  </div>
+
+  <!-- End card -->
+  <div id="end-card">
+    <div style="font-size:40px">✅</div>
+    <p>このセットが終わりました！</p>
+    <small id="end-score"></small>
+    <button class="action-btn" id="btn-restart" style="background:var(--blue);max-width:200px;margin:0 auto">シャッフルして再挑戦</button>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats-grid"></div>
+
+  <!-- Reset -->
+  <button id="reset-btn">進捗をリセット</button>
+</div>
+
+<div id="toast">習得済みにしました ✓</div>
+
+<script>
+// ==================== DATA ====================
+const CATS = [
+  {id:"pattern",label:"パターン分類",color:"#1F3864"},
+  {id:"intro",  label:"序論接続文",  color:"#2E75B6"},
+  {id:"episode",label:"本論EP",      color:"#1E7145"},
+  {id:"conclusion",label:"結論",     color:"#C55A11"},
+  {id:"phrase", label:"頻出フレーズ",color:"#7030A0"},
+  {id:"star",   label:"STAR法",      color:"#C00000"},
+];
+
+const ALL_CARDS = [
+  // パターン分類
+  {id:1,cat:"pattern",q:"「コミュニケーションの重要性」は何タイプ？",a:"重要性タイプ（Pattern 1）\n→「なぜ重要か」を2〜3つ論じる構成"},
+  {id:2,cat:"pattern",q:"「チームワークの重要性」は何タイプ？",a:"重要性タイプ（Pattern 1）\n→「なぜ重要か」を2〜3つ論じる構成"},
+  {id:3,cat:"pattern",q:"「個人情報管理の重要性」は何タイプ？",a:"重要性タイプ（Pattern 1）\n→「なぜ重要か」を2〜3つ論じる構成"},
+  {id:4,cat:"pattern",q:"「コンプライアンスの重要性」は何タイプ？",a:"重要性タイプ（Pattern 1）\n→「なぜ重要か」を2〜3つ論じる構成"},
+  {id:5,cat:"pattern",q:"「報連相の重要性」は何タイプ？",a:"重要性タイプ（Pattern 1）\n→「なぜ重要か」を2〜3つ論じる構成"},
+  {id:6,cat:"pattern",q:"「自己啓発の重要性」は何タイプ？",a:"重要性タイプ（Pattern 1）\n→「なぜ重要か」を2〜3つ論じる構成"},
+  {id:7,cat:"pattern",q:"「創意工夫」は何タイプ？",a:"事例タイプ（Pattern 2）\n→ 取組＋成果 を2セット論じる構成"},
+  {id:8,cat:"pattern",q:"「リスク対応」は何タイプ？",a:"事例タイプ（Pattern 2）\n→ 取組＋成果 を2セット論じる構成"},
+  {id:9,cat:"pattern",q:"「課題解決」は何タイプ？",a:"事例タイプ（Pattern 2）\n→ 取組＋成果 を2セット論じる構成"},
+  {id:10,cat:"pattern",q:"「トラブル対応」は何タイプ？",a:"事例タイプ（Pattern 2）\n→ 取組＋成果 を2セット論じる構成"},
+  {id:11,cat:"pattern",q:"「職場の活性化」は何タイプ？",a:"事例タイプ（Pattern 2）\n→ 取組＋成果 を2セット論じる構成"},
+  {id:12,cat:"pattern",q:"「ワーク・ライフ・バランス」は何タイプ？",a:"事例タイプ（Pattern 2）\n→ 取組＋成果 を2セット論じる構成"},
+  {id:13,cat:"pattern",q:"「部署横断」は何タイプ？",a:"事例タイプ（Pattern 2）\n→ 取組＋成果 を2セット論じる構成"},
+  {id:14,cat:"pattern",q:"「信頼関係の構築」は何タイプ？",a:"事例タイプ（Pattern 2）\n→ 取組＋成果 を2セット論じる構成"},
+  {id:15,cat:"pattern",q:"「積極性と協調性」は何タイプ？",a:"事例タイプ（Pattern 2）\n→ 取組＋成果 を2セット論じる構成"},
+  {id:16,cat:"pattern",q:"「スケジュール管理」は何タイプ？",a:"業務管理タイプ（Pattern 3）\n→ 意義 → 実践1 → 実践2 の構成"},
+  {id:17,cat:"pattern",q:"「優先順位」は何タイプ？",a:"業務管理タイプ（Pattern 3）\n→ 意義 → 実践1 → 実践2 の構成"},
+  {id:18,cat:"pattern",q:"「目標設定と振り返り」は何タイプ？",a:"業務管理タイプ（Pattern 3）\n→ 意義 → 実践1 → 実践2 の構成"},
+  {id:19,cat:"pattern",q:"「進行管理」は何タイプ？",a:"業務管理タイプ（Pattern 3）\n→ 意義 → 実践1 → 実践2 の構成"},
+  {id:20,cat:"pattern",q:"「生産性の向上」は何タイプ？",a:"業務管理タイプ（Pattern 3）\n→ 意義 → 実践1 → 実践2 の構成"},
+  {id:21,cat:"pattern",q:"「経営感覚」は何タイプ？",a:"業務管理タイプ（Pattern 3）\n→ 意義 → 実践1 → 実践2 の構成"},
+  // 序論接続文
+  {id:22,cat:"intro",q:"テーマ「コミュニケーション」\n→ 序論の接続文は？",a:"グループリーダーとなってからは、チーム全体を見渡しメンバー一人ひとりとコミュニケーションをとることの重要性をこれまで以上に実感している。このような経験を踏まえ、仕事におけるコミュニケーションの重要性について私の考えを以下に述べていきたい。"},
+  {id:23,cat:"intro",q:"テーマ「チームワーク」\n→ 序論の接続文は？",a:"主任という立場となってからは、チームワークを高めることの重要性をこれまで以上に実感している。このような経験を踏まえ、仕事を進めていく上でのチームワークの重要性について私の考えを以下に述べていきたい。"},
+  {id:24,cat:"intro",q:"テーマ「個人情報管理」\n→ 序論の接続文は？",a:"現職では、患者の氏名・住所・病歴など多くの個人情報を取り扱うことが多い。このため、日々の業務において適切な個人情報管理の重要性を学ぶ機会が多くあった。このような経験を踏まえ、職場における個人情報管理の重要性について論じていきたい。"},
+  {id:25,cat:"intro",q:"テーマ「コンプライアンス」\n→ 序論の接続文は？",a:"このように多様な業務を経験する中において、私は常にコンプライアンスを大切にして業務に励んできた。以上を踏まえ、行政におけるコンプライアンスの重要性について論じていきたい。"},
+  {id:26,cat:"intro",q:"テーマ「報連相」\n→ 序論の接続文は？",a:"このように多様な業務を経験する中において、私は常に報告・連絡・相談（以下「報連相」という。）を心掛けて業務に取り組んできた。以上を踏まえ、仕事における報連相の重要性について論じていきたい。"},
+  {id:27,cat:"intro",q:"テーマ「自己啓発」\n→ 序論の接続文は？",a:"このような社会人経験の中で、私は積極的に自己啓発に取り組んできた。以上を踏まえ、自己啓発の重要性について論じていきたい。"},
+  {id:28,cat:"intro",q:"テーマ「課題解決」\n→ 序論の接続文は？",a:"日々の業務の遂行に当たっては、常に様々な課題に取り組んできた。以上の経験を踏まえ、私がこれまでに職場において取り組んできた課題解決について論じていきたい。"},
+  {id:29,cat:"intro",q:"テーマ「トラブル対応」\n→ 序論の接続文は？",a:"日々の業務の遂行に当たって、患者や他部署、チーム間で起こる様々なトラブルに対応してきた。以上の経験を踏まえ、私がこれまでに職場において取り組んできたトラブル対応について論じていきたい。"},
+  {id:30,cat:"intro",q:"テーマ「職場の活性化」\n→ 序論の接続文は？",a:"主任として部下の指導や育成にも従事している。このような経験を踏まえ、職場の活性化について論じていきたい。"},
+  {id:31,cat:"intro",q:"テーマ「ワーク・ライフ・バランス」\n→ 序論の接続文は？",a:"私の職場では職員の業務負担が増大傾向にある。このため私は、職場におけるワーク・ライフ・バランスの実現に向けて様々な取組に努めてきた。以上の経験を踏まえ、私がこれまでに取り組んできたことについて論じていきたい。"},
+  {id:32,cat:"intro",q:"テーマ「進行管理」\n→ 序論の接続文は？",a:"このような経験をする中で私は、仕事で高い成果を発揮するため、適切な進行管理に努めてきた。以上を踏まえ、仕事における進行管理について論じていきたい。"},
+  {id:33,cat:"intro",q:"テーマ「優先順位」\n→ 序論の接続文は？",a:"主任という立場となってからは業務の幅が広がるとともに業務量も多くなり、優先順位を意識した業務遂行の重要性を強く実感している。このような経験を踏まえ、仕事の優先順位について以下に論じていきたい。"},
+  {id:34,cat:"intro",q:"テーマ「目標設定と振り返り」\n→ 序論の接続文は？",a:"このように多様な業務を経験する中で、私は仕事における目標設定と振り返りの重要性を認識し実践に努めてきた。このような経験を踏まえ、仕事における目標設定と振り返りについて以下に論じていきたい。"},
+  // 本論EP
+  {id:35,cat:"episode",q:"テーマ「課題解決」EP1\nキーワードで答えよ",a:"【診療費計算ツールの整備】\n・経験浅いメンバー増加 → 計算遅滞・待ち問題\n・誰でも使える計算ツール整備＋つまずき箇所を補助\n・結果：新人配属後も滞りなく業務遂行できるように"},
+  {id:36,cat:"episode",q:"テーマ「課題解決」EP2\nキーワードで答えよ",a:"【情報共有の工夫（シフト制の伝達問題）】\n・シフト制で全員集合困難 → 口頭伝達で漏れ・齟齬多発\n・メール配信＋共有ファイル作成を上司に提案・実行\n・結果：伝達漏れ・認識齟齬が大幅減少"},
+  {id:37,cat:"episode",q:"テーマ「トラブル対応」EP1\nキーワードで答えよ",a:"【待ち時間クレームへの対応】\n・1日1,000人 → 混雑時に待ち時間長期化・クレーム頻発\n・待ち時間を統計化・グラフ化してチーム共有を提案\n・結果：混雑時に増員対応 → 待ち時間短縮・クレーム大幅減少"},
+  {id:38,cat:"episode",q:"テーマ「トラブル対応」EP2\nキーワードで答えよ",a:"【新人育成プログラムの作成】\n・育成担当者任せ → 習得遅れ・担当者不満・新人の不安\n・1年間の業務項目一覧化・達成期限を明確化したプログラム作成\n・結果：大きな遅れを取る者がゼロに"},
+  {id:39,cat:"episode",q:"テーマ「創意工夫」EP1\nキーワードで答えよ",a:"【チャットボット導入】\n・患者対応が平日営業時間のみ → クレーム発生\n・AIチャットボット導入を上司に提案（24時間365日対応）\n・システム部門・予算部門と折衝 → 導入実現・好評"},
+  {id:40,cat:"episode",q:"テーマ「創意工夫」EP2\nキーワードで答えよ",a:"【業務マニュアルの標準化】\n・異動多い職場 → マニュアルが属人的 → 引継ぎ混乱多発\n・職員提案制度でマニュアル様式・作成方法の統一化を提案\n・結果：院内全体で引継ぎ・情報共有が円滑化"},
+  {id:41,cat:"episode",q:"テーマ「ワーク・ライフ・バランス」EP1\nキーワードで答えよ",a:"【RPA導入で残業削減】\n・慢性的残業・長時間労働 → 体調不良者発生\n・院内研修のRPAスキルを活かし定型業務への導入を提案\n・患者データ抽出・集計・未収金管理等を自動化\n・結果：残業時間大幅削減"},
+  {id:42,cat:"episode",q:"テーマ「ワーク・ライフ・バランス」EP2\nキーワードで答えよ",a:"【繁閑に合わせた相互支援】\n・メンバーごとに繁忙期が異なる → 有給・休暇が取れない\n・全員の業務スケジュール・繁忙期を明確化 → 閑散期のメンバーがサポート\n・結果：休暇が計画的に取得されるように"},
+  {id:43,cat:"episode",q:"テーマ「リスク対応」EP1\nキーワードで答えよ",a:"【個人情報管理の定期注意喚起】\n・新人が書類紛失しかける / ベテランの放置も散見\n・課内全体への定期的注意喚起を上司に提案・実行\n・結果：同種ミスがゼロに"},
+  {id:44,cat:"episode",q:"テーマ「リスク対応」EP2\nキーワードで答えよ",a:"【窓口対応ノウハウの蓄積・共有】\n・ベテラン大量退職 → 経験浅い職員が誤対応多発\n・稀有な事例・困難事例の対応方法をノウハウとして蓄積・共有\n・結果：クレーム抑制・自発的検討も生まれた"},
+  {id:45,cat:"episode",q:"テーマ「積極性と協調性」\nEP1（積極性）キーワードは？",a:"【RPA導入で業務効率化（積極性）】\n・慢性的残業・体調不良者が発生という職場課題\n・院内研修で学んだRPAスキルを活かし定型業務への導入を提案\n・結果：残業時間大幅削減"},
+  {id:46,cat:"episode",q:"テーマ「積極性と協調性」\nEP2（協調性）キーワードは？",a:"【マニュアル改訂での意見調整（協調性）】\n・ベテランvs若手でマニュアル改訂方針が鋭く対立\n・定型業務を細部まで明文化（若手の不安解消）\n・ベテランの知見を活かす事例検討会を設置（統合）\n・結果：意見対立解消・チームが活性化"},
+  {id:47,cat:"episode",q:"テーマ「信頼関係の構築」EP1\nキーワードで答えよ",a:"【上司・部下との積極的コミュニケーション】\n・重要案件で上司が進捗を気にしている → 適切なタイミングで積極報告\n・結果：上司から信頼 → 責任ある仕事を任せられるように\n・部下には率先して声がけ → 自発的サポートを申し出るように"},
+  {id:48,cat:"episode",q:"テーマ「信頼関係の構築」EP2\nキーワードで答えよ",a:"【部署横断での情報・ノウハウ共有】\n・生成AIの活用方法を社内チャットで全社共有 → 各部署から感謝\n・他部署からの依頼に協調性を持って対応\n・結果：他部署との調整が必要な場面で関係部署が協力的に"},
+  // 結論
+  {id:49,cat:"conclusion",q:"テーマ「報連相」\n結論の核心文（主任の立場）を答えよ",a:"私は特別区職員として、これまでの社会人経験から学んできた報連相の重要性を強く認識し、業務に精一杯取り組んでいきたい。そして、主任や係長への報連相を怠らず、チームで一体となって全力で職務に邁進していく所存である。"},
+  {id:50,cat:"conclusion",q:"テーマ「課題解決」\n結論の核心文（主任の立場）を答えよ",a:"私はどのような現場に配属されても、これまでの職務経験を活かし、率先して課題解決に取り組んでいきたい。主任という立場から組織が一丸となり着実に課題を解決していく姿勢を大切にしながら、区民の豊かな生活を守るため全力で職務に邁進していく決意である。"},
+  {id:51,cat:"conclusion",q:"テーマ「進行管理・スケジュール管理」\n結論の核心文（主任の立場）を答えよ",a:"私は特別区職員として、進行管理・スケジュール管理の重要性を念頭に置き、主任として係員の進捗にも目を配りながら職務に邁進していく決意である。"},
+  {id:52,cat:"conclusion",q:"特別区の現状を示す\n「定番の1文」を答えよ（財政・生産性）",a:"特別区では、区民ニーズの複雑化・多様化によって対応すべき課題が山積しており、財政上の制約から職員の数を容易に増やすことができない中においても、区民からの期待と信頼に応えていかなければならない。"},
+  {id:53,cat:"conclusion",q:"特別区の現状を示す\n「定番の1文」を答えよ（住民ニーズ）",a:"現代では、住民意識の多様化やライフスタイルの変化に伴い、行政が抱える課題や住民ニーズも複雑化・多様化している。"},
+  {id:54,cat:"conclusion",q:"「決意の締め文」を3つ答えよ",a:"① 私は、〜の重要性を念頭に置き、全力で職務に邁進していく決意である。\n② 区民の期待や信頼に確実に応えていくため、私は全力で職責を果たしていく決意である。\n③ 私は区政の担い手の一人として、さらなる区政の発展に全身全霊で貢献していく決意である。"},
+  // 頻出フレーズ
+  {id:55,cat:"phrase",q:"穴埋め：\n「そこで私は、〜を（　）に提案し（　）した。」",a:"「そこで私は、〜を【上司】に提案し【実行】した。」\n\n* 行動を示す最重要フレーズ\n* 上司への提案 → 実行 の2ステップで書く"},
+  {id:56,cat:"phrase",q:"穴埋め：\n「この経験から私は、〜が（　）であると（　）することができた。」",a:"「この経験から私は、〜が【重要】であると【学ぶ】ことができた。」\n\n* 事例タイプの締めの定番\n* 「学ぶ」→「身に付ける」→「成長を実感する」も使える"},
+  {id:57,cat:"phrase",q:"穴埋め：\n「私の職場では、〜という（　）が（　）していた。」",a:"「私の職場では、〜という【課題（問題）】が【生じ（発生）】していた。」\n\n* STAR法のS（状況）を始める定番フレーズ"},
+  {id:58,cat:"phrase",q:"穴埋め（業務管理タイプ）：\n「まず、私がこれまでの経験から考える〔テーマ〕の（　）について述べる。」",a:"「まず、私がこれまでの経験から考える〔テーマ〕の【意義】について述べる。」\n\n* 業務管理タイプ本論冒頭の定番フレーズ"},
+  {id:59,cat:"phrase",q:"穴埋め：\n「これらの取組により、〜する（　）が（　）となっている。」",a:"「これらの取組により、〜する【ことができた（ことにつながった）】。」\n\n* 成果を示す締めフレーズ\n* 現在形「できている」も使える"},
+  {id:60,cat:"phrase",q:"「具体的には」を使う\n場面と効果を答えよ",a:"【場面】行動（A）を述べた直後\n【効果】\n・取組の詳細を追加できる\n・自然に50〜80字増やせる\n・説得力が増す\n\n例：「そこで私は情報共有の仕組みを整えた。具体的には、メールでの配信と共有ファイルの作成を行った。」"},
+  {id:61,cat:"phrase",q:"「一方で」を使う\n場面と効果を答えよ",a:"【場面】取組の難しさや制約を挿入するとき\n【効果】\n・課題解決の過程に深みが増す\n・50〜100字自然に増やせる\n\n例：「一方で、社内にはSNSのノウハウがなく、私自身も素人同然であった。このため私は、毎日のように他社の手法を調べ学習した。」"},
+  {id:62,cat:"phrase",q:"用語説明挿入で文字数を増やす技法\n（RPA / KPI / ヒヤリ・ハット）",a:"RPA\n→「（ソフトウェアロボットがパソコン上の定型作業を自動処理する技術）」\n\nKPI\n→「（事業目標の達成状況を測定するための中間指標）」\n\nヒヤリ・ハット\n→「（重大事故には至らなかったが、ひやりとした経験）」\n\n* 括弧内の説明で20〜40字増やせる"},
+  // STAR法
+  {id:63,cat:"star",q:"STAR法の「S」は何の略？\n論文ではどう書く？",a:"S = Situation（状況）\n\n書き方：\n「私の職場では、〜という状況があった。」\n「〜という課題（問題）が生じていた。」\n\n* 問題の背景・職場の状況を2〜3文で具体的に説明する"},
+  {id:64,cat:"star",q:"STAR法の「T」は何の略？\n論文ではどう書く？",a:"T = Task（課題）\n\n書き方：\n「このまま放置すれば〜という問題に発展すると私は強く感じた。」\n「このため、〜することが急務であった。」\n\n* 省略されがちだが、1文入れると論文の深みが大幅に増す"},
+  {id:65,cat:"star",q:"STAR法の「A」は何の略？\n論文ではどう書く？",a:"A = Action（行動）\n\n書き方：\n「そこで私は、〜を上司に提案し実行した。具体的には、〜に取り組んだ。」\n\n* 最も文字数をかける部分（約150字）\n* 提案・決断 → 具体的手段 の2ステップ"},
+  {id:66,cat:"star",q:"STAR法の「R」は何の略？\n論文ではどう書く？",a:"R = Result（結果）\n\n書き方：\n「これによって、〜することができた。この経験から私は、〜が重要であると学ぶことができた。」\n\n* 成果＋学び の2文で締める\n* 必ず入れること（省略は減点リスク）"},
+  {id:67,cat:"star",q:"STAR法を3パターンに当てはめると\n各パターンで最重要な要素は？",a:"重要性タイプ → S（状況）\n重要性の根拠となる経験・状況を丁寧に示す\n\n事例タイプ → S + A\n状況説明を手厚く・行動は具体的に2ステップ展開\n\n業務管理タイプ → A（行動）\n各実践を「〇点目は」で順番に丁寧に展開\n\n共通：Tを1文添えると全体の深みが増す"},
+  {id:68,cat:"star",q:"字数配分の目安を答えよ\n（序論・EP1・EP2・結論）",a:"序論：約300字\n（暗記部分150字 + 接続文150字）\n\nEP1：約400〜450字\nEP2：約400〜450字\n（各4ステップ展開）\n\n結論：約250〜300字\n\n合計：約1,350〜1,500字"},
+];
+
+// ==================== STATE ====================
+let deck = [];
+let idx = 0;
+let flipped = false;
+let known = {};
+let activeCat = "all";
+
+const CAT_COLORS = Object.fromEntries(CATS.map(c=>[c.id,c.color]));
+
+function loadKnown(){
+  try{ known = JSON.parse(localStorage.getItem("flashcard-known") || "{}"); }catch{}
+}
+function saveKnown(){
+  try{ localStorage.setItem("flashcard-known", JSON.stringify(known)); }catch{}
+}
+
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function buildDeck(){
+  let filtered;
+  if(activeCat==="all") filtered=[...ALL_CARDS];
+  else if(activeCat==="unknown") filtered=ALL_CARDS.filter(c=>!known[c.id]);
+  else filtered=ALL_CARDS.filter(c=>c.cat===activeCat);
+  deck=shuffle(filtered);
+  idx=0;
+  flipped=false;
+}
+
+// ==================== RENDER ====================
+function render(){
+  const total=ALL_CARDS.length;
+  const knownCount=Object.values(known).filter(Boolean).length;
+  const pct=Math.round((knownCount/total)*100);
+
+  document.getElementById("prog-fill").style.width=pct+"%";
+  document.getElementById("prog-text").textContent=`習得済 ${knownCount} / ${total} (${pct}%)`;
+
+  renderCard();
+  renderStats();
+}
+
+function renderCard(){
+  const card=deck[idx];
+  const endCard=document.getElementById("end-card");
+  const cardWrap=document.getElementById("card-wrap");
+  const btnRow=document.getElementById("btn-row");
+  const navRow=document.getElementById("nav-row");
+
+  if(!card || idx>=deck.length){
+    cardWrap.style.display="none";
+    btnRow.style.display="none";
+    endCard.style.display="flex";
+    const doneCount=deck.filter(c=>known[c.id]).length;
+    document.getElementById("end-score").textContent=`習得：${doneCount} / ${deck.length}`;
+    document.getElementById("counter").textContent="";
+    return;
+  }
+
+  cardWrap.style.display="block";
+  endCard.style.display="none";
+  navRow.style.display="flex";
+
+  document.getElementById("counter").textContent=`${idx+1} / ${deck.length} 枚`;
+
+  const color=CAT_COLORS[card.cat]||"#1F3864";
+  const catLabel=CATS.find(c=>c.id===card.cat)?.label||"";
+
+  // Front
+  document.getElementById("cat-tag-front").textContent=catLabel;
+  document.getElementById("cat-tag-front").style.background=color+"44";
+  document.getElementById("cat-tag-front").style.color="#fff";
+  document.getElementById("q-text").textContent=card.q;
+
+  // Back
+  document.getElementById("cat-tag-back").style.background=color+"66";
+  document.getElementById("a-text").textContent=card.a;
+  document.getElementById("card-back").style.background=`linear-gradient(135deg,${color}22,${color}44)`;
+  document.getElementById("card-back").style.borderColor=color+"66";
+
+  // Flip state
+  const inner=document.getElementById("card-inner");
+  inner.classList.toggle("flipped",flipped);
+  btnRow.style.display=flipped?"flex":"none";
+
+  // Nav buttons
+  document.getElementById("btn-prev").disabled=idx<=0;
+  document.getElementById("btn-next").disabled=idx>=deck.length-1;
+}
+
+function renderStats(){
+  const grid=document.getElementById("stats-grid");
+  grid.innerHTML=CATS.map(c=>{
+    const total=ALL_CARDS.filter(cd=>cd.cat===c.id).length;
+    const done=ALL_CARDS.filter(cd=>cd.cat===c.id&&known[cd.id]).length;
+    const pct2=Math.round((done/total)*100);
+    return `<div class="stat-card" style="background:${c.color}22;border:1px solid ${c.color}44">
+      <span class="stat-num" style="color:${c.color}">${done}/${total}</span>
+      <p class="stat-label">${c.label}</p>
+      <div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:6px;overflow:hidden">
+        <div style="height:100%;width:${pct2}%;background:${c.color};border-radius:2px"></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function showToast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),1800);
+}
+
+// ==================== EVENTS ====================
+// Card flip
+document.getElementById("card-wrap").addEventListener("click",()=>{
+  if(idx>=deck.length)return;
+  flipped=!flipped;
+  renderCard();
+});
+
+// Known / Unknown
+document.getElementById("btn-known").addEventListener("click",()=>{
+  if(idx>=deck.length)return;
+  known[deck[idx].id]=true;
+  saveKnown();
+  showToast("習得済みにしました ✓");
+  idx++;
+  flipped=false;
+  render();
+});
+document.getElementById("btn-unknown").addEventListener("click",()=>{
+  if(idx>=deck.length)return;
+  known[deck[idx].id]=false;
+  saveKnown();
+  idx++;
+  flipped=false;
+  render();
+});
+
+// Nav
+document.getElementById("btn-prev").addEventListener("click",()=>{
+  if(idx<=0)return;
+  idx--;flipped=false;renderCard();
+});
+document.getElementById("btn-next").addEventListener("click",()=>{
+  if(idx>=deck.length-1)return;
+  idx++;flipped=false;renderCard();
+});
+document.getElementById("btn-shuffle").addEventListener("click",()=>{
+  deck=shuffle(deck);idx=0;flipped=false;render();
+});
+document.getElementById("btn-restart").addEventListener("click",()=>{
+  deck=shuffle(deck);idx=0;flipped=false;render();
+});
+
+// Category tabs
+document.getElementById("cat-wrap").addEventListener("click",e=>{
+  const btn=e.target.closest(".cat-btn");
+  if(!btn)return;
+  activeCat=btn.dataset.cat;
+  document.querySelectorAll(".cat-btn").forEach(b=>{
+    b.classList.remove("active");
+    b.style.background="rgba(255,255,255,.07)";
+    b.style.color="var(--subtle)";
+  });
+  const color=activeCat==="all"?"#444":activeCat==="unknown"?"#C55A11":(CAT_COLORS[activeCat]||"#444");
+  btn.classList.add("active");
+  btn.style.background=color;
+  btn.style.color="#fff";
+  buildDeck();
+  render();
+});
+
+// Reset
+document.getElementById("reset-btn").addEventListener("click",()=>{
+  if(!confirm("進捗をリセットしますか？"))return;
+  known={};
+  saveKnown();
+  render();
+});
+
+// ==================== INIT ====================
+loadKnown();
+buildDeck();
+render();
+</script>
+</body>
+</html>
